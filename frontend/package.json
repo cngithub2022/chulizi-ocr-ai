@@ -1,6 +1,6 @@
 {
   "name": "ocr-app",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Cross-platform OCR Desktop Application",
   "main": "electron/main.cjs",
@@ -45,7 +45,8 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "icon": "build/icon.icns"
     },
     "win": {
       "target": [
