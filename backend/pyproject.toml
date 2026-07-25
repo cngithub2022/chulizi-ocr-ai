@@ -1,0 +1,45 @@
+[project]
+name = "ocr-app-backend"
+version = "0.1.0"
+description = "OCR App Backend - PaddleOCR inference server"
+requires-python = ">=3.12"
+
+dependencies = [
+    "paddleocr>=3.7",
+    "paddlepaddle>=3.3",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "python-multipart>=0.0.20",
+    "pydantic>=2.0",
+    "PyMuPDF>=1.24",
+    "Pillow>=10.0",
+    "pydantic-settings>=2.0",
+]
+
+[project.optional-dependencies.dev]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.9",
+    "mypy>=1.15",
+    "httpx>=0.28",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+backend/dist/
+backend/build/
+*.spec
+
+# Node
+node_modules/
+frontend/dist/
+frontend/release/
+frontend/out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# OCR app data
+.ocr-app/
+
+# Environment
+.env
+.env.local

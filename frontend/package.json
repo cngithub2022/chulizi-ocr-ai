@@ -1,0 +1,100 @@
+{
+  "name": "ocr-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cross-platform OCR Desktop Application",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "electron:dev": "electron .",
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:win": "npm run build && electron-builder --win",
+    "desktop": "echo \"Run: terminal 1: npm run dev | terminal 2: npm run electron:dev\"",
+    "publish": "npm run build && electron-builder --mac --publish always",
+    "publish:win": "npm run build && electron-builder --win --publish always"
+  },
+  "build": {
+    "appId": "com.ocr-app.desktop",
+    "productName": "OCR Desktop",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "*.py",
+          "*.toml",
+          "*.txt"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "draft"
+    },
+    "electronDist": "node_modules/electron/dist"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-dropzone": "^14.3.5",
+    "react-markdown": "^9.0.3",
+    "react-zoom-pan-pinch": "^3.6.2",
+    "recharts": "^2.15.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "framer-motion": "^11.15.0",
+    "lucide-react": "^0.460.0",
+    "postcss": "^8.4.49",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss": "^3.4.16",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3",
+    "wait-on": "^8.0.3"
+  },
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chulizi/chulizi-ocr-ai.git"
+  }
+}
