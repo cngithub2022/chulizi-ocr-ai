@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require("electron");
 const { spawn, execFileSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
@@ -9,75 +9,12 @@ let backendProcess = null;
 const isDev = !app.isPackaged;
 const BACKEND_PORT = 8000;
 
-// =====================================================================
-// Auto-Updater
-// =====================================================================
+// Sync IPC for app version (called from preload)
+ipcMain.on("get-app-version-sync", (e) => {
+  e.returnValue = app.getVersion() || "0.2.3";
+});
 
-function setupAutoUpdater() {
-  try {
-    const { autoUpdater } = require("electron-updater");
-    autoUpdater.autoDownload = true;
-    autoUpdater.autoInstallOnAppQuit = true;
-    autoUpdater.logger = console;
-
-    autoUpdater.on("checking-for-update", () => {
-      mainWindow?.webContents.send("update-status", { status: "checking" });
-    });
-    autoUpdater.on("update-available", (info) => {
-      mainWindow?.webContents.send("update-status", {
-        status: "available",
-        version: info.version,
-      });
-    });
-    autoUpdater.on("update-not-available", () => {
-      mainWindow?.webContents.send("update-status", { status: "not-available" });
-    });
-    autoUpdater.on("download-progress", (p) => {
-      mainWindow?.webContents.send("update-status", {
-        status: "downloading",
-        percent: Math.round(p.percent),
-      });
-    });
-    autoUpdater.on("update-downloaded", (info) => {
-      mainWindow?.webContents.send("update-status", {
-        status: "downloaded",
-        version: info.version,
-      });
-    });
-    autoUpdater.on("error", (err) => {
-      console.error("[autoUpdater]", err.message);
-      mainWindow?.webContents.send("update-status", { status: "error", message: err.message });
-    });
-
-    // Check for updates 10s after app starts
-    setTimeout(() => {
-      autoUpdater.checkForUpdates().catch((e) => console.log("[autoUpdater] Check skipped:", e.message));
-    }, 10000);
-
-    // Periodic check every 4 hours
-    setInterval(() => {
-      autoUpdater.checkForUpdates().catch(() => {});
-    }, 4 * 60 * 60 * 1000);
-
-    console.log("[Electron] Auto-updater configured (provider: github)");
-
-    // IPC handlers for manual check & install
-    ipcMain.handle("check-for-updates", async () => {
-      try { return await autoUpdater.checkForUpdates(); } catch { return null; }
-    });
-    ipcMain.handle("install-update", () => {
-      autoUpdater.quitAndInstall();
-    });
-
-  } catch (e) {
-    console.log("[Electron] electron-updater not available:", e.message);
-  }
-}
-
-// =====================================================================
-// Python Backend
-// =====================================================================
-
+// ---- Find system Python ----
 function findPython() {
   const candidates = [
     "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
@@ -90,13 +27,14 @@ function findPython() {
   return "";
 }
 
+// ---- Start backend ----
 async function startBackend() {
-  if (isDev) { console.log("[Electron] Dev mode — backend expected on :8000"); return; }
+  if (isDev) { return; }
   const python = findPython();
-  if (!python) { console.log("[Electron] Python not found"); return; }
+  if (!python) return;
   const backendDir = path.join(process.resourcesPath, "backend");
   const mainPy = path.join(backendDir, "main.py");
-  if (!fs.existsSync(mainPy)) { console.log("[Electron] " + mainPy + " not found"); return; }
+  if (!fs.existsSync(mainPy)) return;
   console.log("[Electron] Starting: " + python + " " + mainPy);
   backendProcess = spawn(python, [mainPy], {
     cwd: backendDir,
@@ -105,28 +43,8 @@ async function startBackend() {
   });
   backendProcess.stdout.on("data", (d) => console.log("[backend]", d.toString().trim()));
   backendProcess.stderr.on("data", (d) => console.log("[backend:err]", d.toString().trim()));
-  backendProcess.on("error", (e) => { console.error("[Electron] Spawn error:", e.message); backendProcess = null; });
-  backendProcess.on("exit", (code) => { if (code && code !== 0) console.error("[Electron] Backend exited code", code); backendProcess = null; });
-}
-
-// =====================================================================
-// Health / Lifecycle
-// =====================================================================
-
-function healthCheck() {
-  return new Promise((resolve) => {
-    const req = http.get("http://127.0.0.1:" + BACKEND_PORT + "/api/health", (res) => resolve(res.statusCode === 200));
-    req.on("error", () => resolve(false));
-    req.setTimeout(3000, () => { req.destroy(); resolve(false); });
-  });
-}
-
-async function waitForBackend(timeoutMs) {
-  const start = Date.now();
-  while (Date.now() - start < (timeoutMs || 30000)) {
-    try { if (await healthCheck()) return; } catch {}
-    await new Promise((r) => setTimeout(r, 500));
-  }
+  backendProcess.on("error", (e) => { backendProcess = null; });
+  backendProcess.on("exit", (code) => { backendProcess = null; });
 }
 
 function stopBackend() {
@@ -136,10 +54,7 @@ function stopBackend() {
   }
 }
 
-// =====================================================================
-// Window / IPC
-// =====================================================================
-
+// ---- Window ----
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280, height: 860, minWidth: 900, minHeight: 600,
@@ -151,22 +66,48 @@ async function createWindow() {
   });
   mainWindow.once("ready-to-show", () => mainWindow.show());
   mainWindow.loadURL(isDev ? "http://localhost:5173" : "file://" + path.join(__dirname, "..", "dist", "index.html"));
+
+  // Global shortcut: Cmd+Shift+O for screenshot OCR
+  globalShortcut.register("Cmd+Shift+O", () => {
+    if (!mainWindow) return;
+    mainWindow.show();
+    mainWindow.focus();
+    const { exec } = require("child_process");
+    const tmpPath = path.join(app.getPath("temp"), `ocr_shot_${Date.now()}.png`);
+    exec(`screencapture -i "${tmpPath}"`, (err) => {
+      if (!err && fs.existsSync(tmpPath)) mainWindow?.webContents.send("screenshot-captured", tmpPath);
+    });
+  });
 }
 
+// ---- IPC ----
 ipcMain.handle("get-backend-url", () => "http://127.0.0.1:" + BACKEND_PORT);
 ipcMain.handle("show-open-dialog", async (_, o) => mainWindow ? dialog.showOpenDialog(mainWindow, o) : null);
+ipcMain.handle("trigger-screenshot", async () => {
+  if (!mainWindow) return null;
+  const tmpPath = path.join(app.getPath("temp"), `ocr_shot_${Date.now()}.png`);
+  return new Promise((resolve) => {
+    const { exec } = require("child_process");
+    exec(`screencapture -i "${tmpPath}"`, (err) => {
+      if (!err && fs.existsSync(tmpPath)) {
+        mainWindow?.webContents.send("screenshot-captured", tmpPath);
+        resolve(tmpPath);
+      } else { resolve(null); }
+    });
+  });
+});
 
-// =====================================================================
-// App Lifecycle
-// =====================================================================
-
+// ---- Lifecycle ----
 app.whenReady().then(async () => {
   await startBackend();
   await createWindow();
-  setupAutoUpdater();
-  if (!isDev) waitForBackend().catch((e) => console.error(e));
 });
-
 app.on("window-all-closed", () => { stopBackend(); if (process.platform !== "darwin") app.quit(); });
-app.on("will-quit", () => stopBackend());
+app.on("will-quit", () => { globalShortcut.unregisterAll(); stopBackend(); });
 app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+
+// Open release page in browser
+
+ipcMain.handle("open-release-page", () => {
+  shell.openExternal("https://github.com/cngithub2022/chulizi-ocr-ai/releases/latest");
+});

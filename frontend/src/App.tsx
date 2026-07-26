@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, ScanLine } from "lucide-react";
 import { I18nProvider } from "@/i18n";
@@ -11,7 +11,6 @@ import ResultPanel from "@/components/ResultPanel";
 import BatchPanel from "@/components/BatchPanel";
 import HistoryPanel from "@/components/HistoryPanel";
 import ToastContainer from "@/components/Toast";
-import UpdateBanner from '@/components/UpdateBanner';
 
 function AppContent() {
   const { dark, toggleTheme } = useTheme();
@@ -45,6 +44,18 @@ function AppContent() {
     [runOcr]
   );
 
+  // Screenshot OCR listener
+  useEffect(() => {
+    if (!window.electronAPI?.onScreenshotCaptured) return;
+    const unsub = window.electronAPI.onScreenshotCaptured(async (filepath: string) => {
+      const fileUrl = `file://${filepath}`;
+      setCurrentPreview(fileUrl);
+      setCurrentFile(new File([], "screenshot.png"));
+      await runOcr(new File([await (await fetch(fileUrl)).blob()], "screenshot.png", { type: "image/png" }));
+    });
+    return unsub;
+  }, [runOcr]);
+
   const handleHistoryLoad = useCallback(
     async (record: any) => {
       await loadHistoryResult(record);
@@ -73,7 +84,6 @@ function AppContent() {
         onHistoryClick={() => setHistoryOpen((h) => !h)}
         historyOpen={historyOpen}
       />
-      <UpdateBanner />
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 min-w-0">

@@ -1,6 +1,6 @@
 {
   "name": "ocr-app",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "private": true,
   "description": "Cross-platform OCR Desktop Application",
   "main": "electron/main.cjs",
@@ -17,8 +17,8 @@
     "publish:win": "npm run build && electron-builder --win --publish always"
   },
   "build": {
-    "appId": "com.ocr-app.desktop",
-    "productName": "OCR Desktop",
+    "appId": "com.ocr-desktop.app",
+    "productName": "OCR-Desktop",
     "directories": {
       "output": "release"
     },
@@ -46,7 +46,7 @@
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "icon": "build/icon.icns"
+      "icon": "build/icon-source.png"
     },
     "win": {
       "target": [
@@ -59,12 +59,13 @@
     },
     "publish": {
       "provider": "github",
-      "releaseType": "draft"
+      "releaseType": "release",
+      "updaterCacheDirName": "ocr-app-updater"
     },
-    "electronDist": "node_modules/electron/dist"
+    "electronDist": "node_modules/electron/dist",
+    "artifactName": "OCR-Desktop-${version}-${arch}.${ext}"
   },
   "dependencies": {
-    "electron-updater": "^6.8.9",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
